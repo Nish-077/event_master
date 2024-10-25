@@ -1,0 +1,254 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider  = "mysql"
+  url       = env("MYSQL_DATABASE_URL")
+  directUrl = env("MYSQL_DATABASE_URL")
+}
+
+model admin {
+  admin_id                    String                        @id @db.VarChar(20)
+  first_name                  String                        @db.VarChar(20)
+  last_name                   String                        @db.VarChar(20)
+  email                       String                        @unique(map: "email") @db.VarChar(32)
+  password                    String                        @db.VarChar(32)
+  admin_approves_registration admin_approves_registration[]
+  admin_assigns_speaker       admin_assigns_speaker[]
+  admin_manages_event         admin_manages_event[]
+  admin_monitors_dashboard    admin_monitors_dashboard[]
+  admin_phone_no              admin_phone_no[]
+}
+
+model admin_approves_registration {
+  admin_id        String       @db.VarChar(20)
+  registration_id String       @db.VarChar(20)
+  admin           admin        @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_approves_registration_ibfk_3")
+  registration    registration @relation(fields: [registration_id], references: [registration_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_approves_registration_ibfk_4")
+
+  @@id([admin_id, registration_id])
+  @@index([registration_id], map: "registration_id")
+}
+
+model admin_assigns_speaker {
+  admin_id   String  @db.VarChar(20)
+  speaker_id String  @db.VarChar(20)
+  admin      admin   @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_assigns_speaker_ibfk_3")
+  speaker    speaker @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_assigns_speaker_ibfk_4")
+
+  @@id([admin_id, speaker_id])
+  @@index([speaker_id], map: "speaker_id")
+}
+
+model admin_manages_event {
+  admin_id String @db.VarChar(20)
+  event_id String @db.VarChar(20)
+  admin    admin  @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_manages_event_ibfk_3")
+  event    event  @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_manages_event_ibfk_4")
+
+  @@id([admin_id, event_id])
+  @@index([event_id], map: "event_id")
+}
+
+model admin_monitors_dashboard {
+  admin_id     String    @db.VarChar(20)
+  dashboard_id String    @db.VarChar(20)
+  admin        admin     @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_monitors_dashboard_ibfk_3")
+  dashboard    dashboard @relation(fields: [dashboard_id], references: [dashboard_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_monitors_dashboard_ibfk_4")
+
+  @@id([admin_id, dashboard_id])
+  @@index([dashboard_id], map: "dashboard_id")
+}
+
+model admin_phone_no {
+  admin_id     String @db.VarChar(20)
+  phone_number String @db.VarChar(20)
+  admin        admin  @relation(fields: [admin_id], references: [admin_id], onDelete: Cascade, onUpdate: NoAction, map: "admin_phone_no_ibfk_2")
+
+  @@id([admin_id, phone_number])
+}
+
+model dashboard {
+  dashboard_id             String                     @id @db.VarChar(20)
+  event_id                 String                     @db.VarChar(20)
+  feedback_score           Decimal?                   @default(0.00) @db.Decimal(3, 2)
+  demographics             Json?
+  attendance_count         Int?                       @default(0)
+  admin_monitors_dashboard admin_monitors_dashboard[]
+  event                    event                      @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "dashboard_ibfk_1")
+
+  @@index([event_id], map: "event_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model event {
+  event_id            String                @id @db.VarChar(20)
+  event_name          String                @db.VarChar(32)
+  event_date          DateTime              @db.Date
+  event_time          DateTime              @db.Time(0)
+  agenda              String?               @db.Text
+  budget              Int?
+  admin_manages_event admin_manages_event[]
+  dashboard           dashboard[]
+  organiser_for_event organiser_for_event[]
+  registration        registration[]
+  session             session[]
+}
+
+model organiser {
+  organiser_id        String                @id @db.VarChar(20)
+  admin_id            String?               @db.VarChar(20)
+  first_name          String                @db.VarChar(20)
+  last_name           String?               @db.VarChar(20)
+  email               String                @unique(map: "email") @db.VarChar(32)
+  password            String                @db.VarChar(32)
+  role                String                @db.VarChar(20)
+  department          String?               @db.VarChar(32)
+  organiser_for_event organiser_for_event[]
+  organiser_phone_no  organiser_phone_no[]
+}
+
+model organiser_for_event {
+  organiser_id String    @db.VarChar(20)
+  event_id     String    @db.VarChar(20)
+  organiser    organiser @relation(fields: [organiser_id], references: [organiser_id], onDelete: Cascade, onUpdate: NoAction, map: "organiser_for_event_ibfk_1")
+  event        event     @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "organiser_for_event_ibfk_2")
+
+  @@id([organiser_id, event_id])
+  @@index([event_id], map: "event_id")
+}
+
+model organiser_phone_no {
+  organiser_id String    @db.VarChar(20)
+  phone_number String    @db.VarChar(20)
+  organiser    organiser @relation(fields: [organiser_id], references: [organiser_id], onDelete: Cascade, onUpdate: NoAction, map: "organiser_phone_no_ibfk_1")
+
+  @@id([organiser_id, phone_number])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model participant {
+  participant_id       String                 @id @db.VarChar(20)
+  first_name           String                 @db.VarChar(20)
+  last_name            String?                @db.VarChar(20)
+  email                String                 @unique(map: "email") @db.VarChar(30)
+  password             String                 @db.VarChar(32)
+  street               String?                @db.Text
+  city                 String?                @db.Text
+  state                String?                @db.Text
+  postal_code          String?                @db.Char(6)
+  type                 participant_type
+  participant_phone_no participant_phone_no[]
+  registration         registration[]
+}
+
+model participant_phone_no {
+  participant_id String      @db.VarChar(20)
+  phone_number   String      @db.VarChar(15)
+  participant    participant @relation(fields: [participant_id], references: [participant_id], onDelete: Cascade, onUpdate: NoAction, map: "participant_phone_no_ibfk_1")
+
+  @@id([participant_id, phone_number])
+}
+
+model registration {
+  registration_id             String                         @id @db.VarChar(20)
+  participant_id              String?                        @db.VarChar(20)
+  event_id                    String                         @db.VarChar(20)
+  registration_date           DateTime                       @db.Date
+  registration_type           registration_registration_type
+  registration_time           DateTime                       @db.Time(0)
+  attendance_status           registration_attendance_status
+  admin_approves_registration admin_approves_registration[]
+  feedback                    feedback[]
+  participant                 participant?                   @relation(fields: [participant_id], references: [participant_id], onDelete: NoAction, onUpdate: NoAction, map: "registration_ibfk_1")
+  event                       event                          @relation(fields: [event_id], references: [event_id], onDelete: NoAction, onUpdate: NoAction, map: "registration_ibfk_2")
+
+  @@index([event_id], map: "event_id")
+  @@index([participant_id], map: "participant_id")
+}
+
+model session {
+  session_id          String                @db.VarChar(20)
+  event_id            String                @db.VarChar(20)
+  topic               String                @db.VarChar(100)
+  building            String                @db.VarChar(20)
+  room_no             String                @db.VarChar(10)
+  capacity            Int?
+  start_time          DateTime              @db.Time(0)
+  end_time            DateTime              @db.Time(0)
+  event               event                 @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "session_ibfk_1")
+  speaker_for_session speaker_for_session[]
+
+  @@id([session_id, event_id])
+  @@index([event_id], map: "event_id")
+}
+
+model speaker {
+  speaker_id            String                  @id @db.VarChar(20)
+  first_name            String                  @db.VarChar(20)
+  last_name             String?                 @db.VarChar(20)
+  email                 String                  @unique(map: "email") @db.VarChar(30)
+  password              String                  @db.VarChar(32)
+  bio                   String?                 @db.Text
+  admin_assigns_speaker admin_assigns_speaker[]
+  speaker_expertise     speaker_expertise[]
+  speaker_for_session   speaker_for_session[]
+  speaker_phone_no      speaker_phone_no[]
+}
+
+model speaker_expertise {
+  speaker_id String  @db.VarChar(20)
+  expertise  String  @db.VarChar(30)
+  speaker    speaker @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_expertise_ibfk_1")
+
+  @@id([speaker_id, expertise])
+}
+
+model speaker_for_session {
+  speaker_id String  @db.VarChar(20)
+  session_id String  @db.VarChar(20)
+  event_id   String  @db.VarChar(20)
+  speaker    speaker @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_1")
+  session    session @relation(fields: [session_id, event_id], references: [session_id, event_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_2")
+
+  @@id([speaker_id, session_id, event_id])
+  @@index([session_id, event_id], map: "session_id")
+}
+
+model speaker_phone_no {
+  speaker_id   String  @db.VarChar(20)
+  phone_number String  @db.VarChar(20)
+  speaker      speaker @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_phone_no_ibfk_1")
+
+  @@id([speaker_id, phone_number])
+}
+
+model feedback {
+  feedback_id     String        @id @db.VarChar(20)
+  registration_id String?       @db.VarChar(20)
+  feedback_date   DateTime      @db.Date
+  rating          Int?
+  comments        String?       @db.Text
+  registration    registration? @relation(fields: [registration_id], references: [registration_id], onDelete: SetNull, onUpdate: Cascade, map: "feedback_ibfk_1")
+
+  @@index([registration_id], map: "registration_id")
+}
+
+enum registration_registration_type {
+  Early_Bird @map("Early Bird")
+  Standard
+  VIP
+}
+
+enum registration_attendance_status {
+  Attended
+  Absent
+}
+
+enum participant_type {
+  Student
+  Faculty
+  External
+}
