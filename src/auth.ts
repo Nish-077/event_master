@@ -5,7 +5,8 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { user_type } from "@prisma/client";
 
-const adapter = new PrismaAdapter(prisma.user_session, prisma.user);
+
+const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
 export const lucia = new Lucia(adapter, {
   sessionCookie: {
@@ -44,9 +45,6 @@ export const validateRequest = cache(
     const sessionId =
       (await cookies()).get(lucia.sessionCookieName)?.value ?? null;
 
-    // console.log("cookie found", sessionId);
-    // console.log("sessionCookieName", lucia.sessionCookieName);
-
     if (!sessionId) {
       return {
         user: null,
@@ -59,7 +57,6 @@ export const validateRequest = cache(
     try {
       if (result.session && result.session.fresh) {
         const sessionCookie = lucia.createSessionCookie(result.session.id);
-        // console.log("Created session cookie:", sessionCookie);
         (await cookies()).set(
           sessionCookie.name,
           sessionCookie.value,
@@ -68,7 +65,6 @@ export const validateRequest = cache(
       }
       if (!result.session) {
         const sessionCookie = lucia.createBlankSessionCookie();
-        // console.log("Created blank session cookie:", sessionCookie);
         (await cookies()).set(
           sessionCookie.name,
           sessionCookie.value,

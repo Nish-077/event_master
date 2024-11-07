@@ -14,7 +14,6 @@ export default async function Layout({
   return (
     <SessionProvider value={session}>
       <div>
-        Kontent
         {children}
       </div>
     </SessionProvider>

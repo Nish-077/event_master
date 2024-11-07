@@ -14,7 +14,6 @@ model admin {
   first_name                  String                        @db.VarChar(20)
   last_name                   String                        @db.VarChar(20)
   email                       String                        @unique(map: "email") @db.VarChar(32)
-  password                    String                        @db.VarChar(32)
   admin_approves_registration admin_approves_registration[]
   admin_assigns_speaker       admin_assigns_speaker[]
   admin_manages_event         admin_manages_event[]
@@ -92,9 +91,9 @@ model event {
   budget              Int?
   admin_manages_event admin_manages_event[]
   dashboard           dashboard[]
+  event_session       event_session[]
   organiser_for_event organiser_for_event[]
   registration        registration[]
-  session             session[]
 }
 
 model organiser {
@@ -107,6 +106,7 @@ model organiser {
   department          String?               @db.VarChar(32)
   organiser_for_event organiser_for_event[]
   organiser_phone_no  organiser_phone_no[]
+  user                User[]
 }
 
 model organiser_for_event {
@@ -140,6 +140,7 @@ model participant {
   type                 participant_type
   participant_phone_no participant_phone_no[]
   registration         registration[]
+  user                 User[]
 }
 
 model participant_phone_no {
@@ -168,19 +169,13 @@ model registration {
 }
 
 model session {
-  session_id          String                @db.VarChar(20)
-  event_id            String                @db.VarChar(20)
-  topic               String                @db.VarChar(100)
-  building            String                @db.VarChar(20)
-  room_no             String                @db.VarChar(10)
-  capacity            Int?
-  start_time          DateTime              @db.Time(0)
-  end_time            DateTime              @db.Time(0)
-  event               event                 @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "session_ibfk_1")
-  speaker_for_session speaker_for_session[]
+  userId     String   @map("user_id") @db.VarChar(20)
+  created_at DateTime @default(now()) @db.DateTime(0)
+  id         String   @id @db.VarChar(64)
+  expiresAt  DateTime @db.DateTime(0)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "session_ibfk_1")
 
-  @@id([session_id, event_id])
-  @@index([event_id], map: "event_id")
+  @@index([userId], map: "user_id")
 }
 
 model speaker {
@@ -193,6 +188,7 @@ model speaker {
   speaker_expertise     speaker_expertise[]
   speaker_for_session   speaker_for_session[]
   speaker_phone_no      speaker_phone_no[]
+  user                  User[]
 }
 
 model speaker_expertise {
@@ -204,11 +200,11 @@ model speaker_expertise {
 }
 
 model speaker_for_session {
-  speaker_id String  @db.VarChar(20)
-  session_id String  @db.VarChar(20)
-  event_id   String  @db.VarChar(20)
-  speaker    speaker @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_1")
-  session    session @relation(fields: [session_id, event_id], references: [session_id, event_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_2")
+  speaker_id String        @db.VarChar(20)
+  session_id String        @db.VarChar(20)
+  event_id   String        @db.VarChar(20)
+  speaker    speaker       @relation(fields: [speaker_id], references: [speaker_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_1")
+  session    event_session @relation(fields: [session_id, event_id], references: [event_session_id, event_id], onDelete: Cascade, onUpdate: NoAction, map: "speaker_for_session_ibfk_2")
 
   @@id([speaker_id, session_id, event_id])
   @@index([session_id, event_id], map: "session_id")
@@ -233,23 +229,39 @@ model feedback {
   @@index([registration_id], map: "registration_id")
 }
 
-model user {
-  id           String         @id @db.VarChar(20)
-  email        String         @unique(map: "email") @db.VarChar(32)
-  password     String         @db.VarChar(32)
-  created_at   DateTime       @default(now()) @db.DateTime(0)
-  type         user_type
-  user_session user_session[]
+model User {
+  email          String       @db.VarChar(32)
+  password       String       @db.VarChar(40)
+  created_at     DateTime     @default(now()) @db.DateTime(0)
+  id             String       @id @db.VarChar(20)
+  participant_id String?      @db.VarChar(20)
+  organiser_id   String?      @db.VarChar(20)
+  speaker_id     String?      @db.VarChar(20)
+  session        session[]
+  participant    participant? @relation(fields: [participant_id], references: [participant_id], onUpdate: NoAction, map: "user_ibfk_1")
+  organiser      organiser?   @relation(fields: [organiser_id], references: [organiser_id], onUpdate: NoAction, map: "user_ibfk_2")
+  speaker        speaker?     @relation(fields: [speaker_id], references: [speaker_id], onUpdate: NoAction, map: "user_ibfk_3")
+
+  @@index([organiser_id], map: "organiser_id")
+  @@index([participant_id], map: "participant_id")
+  @@index([speaker_id], map: "speaker_id")
+  @@map("user")
 }
 
-model user_session {
-  id         String   @id @db.VarChar(20)
-  user_id    String   @db.VarChar(20)
-  created_at DateTime @default(now()) @db.DateTime(0)
-  expires_at DateTime @db.DateTime(0)
-  user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "user_session_ibfk_1")
+model event_session {
+  event_session_id    String                @db.VarChar(20)
+  event_id            String                @db.VarChar(20)
+  topic               String                @db.VarChar(100)
+  building            String                @db.VarChar(20)
+  room_no             String                @db.VarChar(10)
+  capacity            Int?
+  start_time          DateTime              @db.Time(0)
+  end_time            DateTime              @db.Time(0)
+  event               event                 @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction, map: "event_session_ibfk_1")
+  speaker_for_session speaker_for_session[]
 
-  @@index([user_id], map: "user_id")
+  @@id([event_session_id, event_id])
+  @@index([event_id], map: "event_id")
 }
 
 enum registration_registration_type {
@@ -267,11 +279,4 @@ enum participant_type {
   Student
   Faculty
   External
-}
-
-enum user_type {
-  Admin
-  Participant
-  Organiser
-  Speaker
 }
