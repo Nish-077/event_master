@@ -31,7 +31,8 @@ export default function SignUpForm() {
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       email: "",
-      userName: "",
+      firstName: "",
+      lastName: "",
       password: "",
     },
   });
@@ -49,7 +50,7 @@ export default function SignUpForm() {
     }
 
     toast({
-      title: `Welcome ${values.userName}`,
+      title: `Welcome ${values.firstName}`,
       description: `You are signed in as a ${values.type}`,
     });
 
@@ -64,12 +65,12 @@ export default function SignUpForm() {
       >
         <FormField
           control={form.control}
-          name="userName"
+          name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-semibold">Username</FormLabel>
+              <FormLabel className="font-semibold">Email</FormLabel>
               <FormControl>
-                <Input placeholder="Enter Username" {...field} />
+                <Input {...field} type="email" placeholder="Enter Email" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -77,12 +78,25 @@ export default function SignUpForm() {
         />
         <FormField
           control={form.control}
-          name="email"
+          name="firstName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-semibold">Email</FormLabel>
+              <FormLabel className="font-semibold">Firstname</FormLabel>
               <FormControl>
-                <Input {...field} type="email" placeholder="Enter Email" />
+                <Input placeholder="Enter Firstname" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-semibold">Lastname</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter Lastname" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -12,7 +12,7 @@ export async function login(
   credentials: LogInValues
 ): Promise<{ error: string }> {
   try {
-    const { email, password } = logInSchema.parse(credentials);
+    const { email, type, password } = logInSchema.parse(credentials);
 
     const existingUser = await prisma.user.findFirst({
       where: { email },
@@ -33,6 +33,16 @@ export async function login(
     if (!validPassword) {
       return {
         error: "Invalid email or password",
+      };
+    }
+
+    if (
+      (type === "Participant" && !existingUser.participant_id) ||
+      (type === "Organiser" && !existingUser.organiser_id) ||
+      (type === "Speaker" && !existingUser.speaker_id)
+    ) {
+      return {
+        error: `${email} is not registered as a ${type}`,
       };
     }
 

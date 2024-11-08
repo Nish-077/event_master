@@ -14,7 +14,11 @@ export type LogInValues = z.infer<typeof logInSchema>;
 
 export const signUpSchema = z.object({
   email: reqString.email("Invalid email address"),
-  userName: reqString.regex(
+  firstName: reqString.regex(
+    /^[a-zA-Z0-9_-]+$/,
+    "Only letters, numbers, - and _ allowed"
+  ),
+  lastName: reqString.regex(
     /^[a-zA-Z0-9_-]+$/,
     "Only letters, numbers, - and _ allowed"
   ),

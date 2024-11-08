@@ -3,8 +3,6 @@ import prisma from "./lib/prisma";
 import { Lucia, Session, User } from "lucia";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { user_type } from "@prisma/client";
-
 
 const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
@@ -28,7 +26,7 @@ export const lucia = new Lucia(adapter, {
 interface DatabaseUserAttributes {
   id: string;
   created_at: Date;
-  type: user_type;
+  type: string;
 }
 
 declare module "lucia" {

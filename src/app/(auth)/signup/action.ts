@@ -11,69 +11,163 @@ import { redirect } from "next/navigation";
 
 export async function signup(
   credentials: SignUpValues
-): Promise<{ error?: string }> {
+): Promise<{ error: string }> {
   try {
-    const { email, userName, type, password } = signUpSchema.parse(credentials);
+    const { email, firstName, lastName, type, password } =
+      signUpSchema.parse(credentials);
 
     const existingUser = await prisma.user.findFirst({
       where: { email },
     });
 
     if (existingUser) {
-      return {
-        error: `User of type ${type} for email ${email} already exists`,
-      };
+      if (
+        (type === "Participant" && existingUser.participant_id) ||
+        (type === "Organiser" && existingUser.organiser_id) ||
+        (type === "Speaker" && existingUser.speaker_id)
+      ) {
+        return {
+          error: `User of type ${type} for email ${email} already exists`,
+        };
+      }
     }
 
-    const rawHash = await hash(password);
-    const passwordHash = Buffer.from(rawHash)
-      .toString("base64")
-      .replace(/[/+=]/g, "")
-      .substring(0, 32);
+    let userId = null;
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      userId = generateIdFromEntropySize(10);
+    }
 
-    const userId = generateIdFromEntropySize(10);
+    const userTypeId = generateIdFromEntropySize(10);
 
-    await prisma.$transaction(async (tx) => {
-      await tx.user.create({
-        data: {
-          id: userId,
-          email,
-          password: passwordHash,
-        },
+    if (!existingUser) {
+      const rawHash = await hash(password);
+      const passwordHash = Buffer.from(rawHash)
+        .toString("base64")
+        .replace(/[/+=]/g, "")
+        .substring(0, 32);
+
+      await prisma.$transaction(async (tx) => {
+        switch (type) {
+          case "Participant":
+            await tx.participant.create({
+              data: {
+                participant_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                type: "Student",
+              },
+            });
+
+            await tx.user.create({
+              data: {
+                id: userId,
+                participant_id: userTypeId,
+                email,
+                password: passwordHash,
+              },
+            });
+            break;
+
+          case "Organiser":
+            await tx.organiser.create({
+              data: {
+                organiser_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                role: "General",
+              },
+            });
+
+            await tx.user.create({
+              data: {
+                id: userId,
+                organiser_id: userTypeId,
+                email,
+                password: passwordHash,
+              },
+            });
+            break;
+
+          case "Speaker":
+            await tx.speaker.create({
+              data: {
+                speaker_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+              },
+            });
+
+            await tx.user.create({
+              data: {
+                id: userId,
+                speaker_id: userTypeId,
+                email,
+                password: passwordHash,
+              },
+            });
+            break;
+        }
       });
+    } else {
+      await prisma.$transaction(async (tx) => {
+        switch (type) {
+          case "Participant":
+            await tx.user.update({
+              where: { id: userId },
+              data: { participant_id: userTypeId },
+            });
 
-      switch (type) {
-        case "Participant":
-          await tx.participant.create({
-            data: {
-              participant_id: userId,
-              first_name: userName,
-              email,
-              type: "Student",
-            },
-          });
-          break;
-        case "Organiser":
-          await tx.organiser.create({
-            data: {
-              organiser_id: userId,
-              first_name: userName,
-              email,
-              role: "General",
-            },
-          });
-          break;
-        case "Speaker":
-          await tx.speaker.create({
-            data: {
-              speaker_id: userId,
-              first_name: userName,
-              email,
-            },
-          });
-          break;
-      }
-    });
+            await tx.participant.create({
+              data: {
+                participant_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                type: "Student",
+              },
+            });
+            break;
+
+          case "Organiser":
+            await tx.user.update({
+              where: { id: userId },
+              data: { organiser_id: userTypeId },
+            });
+
+            await tx.organiser.create({
+              data: {
+                organiser_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                role: "General",
+              },
+            });
+            break;
+
+          case "Speaker":
+            await tx.user.update({
+              where: { id: userId },
+              data: { speaker_id: userTypeId },
+            });
+
+            await tx.speaker.create({
+              data: {
+                speaker_id: userTypeId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+              },
+            });
+            break;
+        }
+      });
+    }
 
     const session = await lucia.createSession(userId, {});
     const sessionCookie = lucia.createSessionCookie(session.id);

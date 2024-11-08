@@ -47,7 +47,7 @@ export default function LogInForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handler)} className="w-full space-y-3">
+      <form onSubmit={form.handleSubmit(handler)} className="w-full max-w-[17rem] space-y-3">
         {error && <p className="text-center text-destructive">{error}</p>}
         <FormField
           control={form.control}
