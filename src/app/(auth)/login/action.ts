@@ -46,7 +46,7 @@ export async function login(
       };
     }
 
-    const session = await lucia.createSession(existingUser.id, {});
+    const session = await lucia.createSession(existingUser.id, { type });
 
     const sessionCookie = lucia.createSessionCookie(session.id);
 

@@ -117,11 +117,6 @@ export async function signup(
       await prisma.$transaction(async (tx) => {
         switch (type) {
           case "Participant":
-            await tx.user.update({
-              where: { id: userId },
-              data: { participant_id: userTypeId },
-            });
-
             await tx.participant.create({
               data: {
                 participant_id: userTypeId,
@@ -131,14 +126,15 @@ export async function signup(
                 type: "Student",
               },
             });
+
+            await tx.user.update({
+              where: { id: userId },
+              data: { participant_id: userTypeId },
+            });
+
             break;
 
           case "Organiser":
-            await tx.user.update({
-              where: { id: userId },
-              data: { organiser_id: userTypeId },
-            });
-
             await tx.organiser.create({
               data: {
                 organiser_id: userTypeId,
@@ -148,14 +144,15 @@ export async function signup(
                 role: "General",
               },
             });
+
+            await tx.user.update({
+              where: { id: userId },
+              data: { organiser_id: userTypeId },
+            });
+
             break;
 
           case "Speaker":
-            await tx.user.update({
-              where: { id: userId },
-              data: { speaker_id: userTypeId },
-            });
-
             await tx.speaker.create({
               data: {
                 speaker_id: userTypeId,
@@ -164,12 +161,18 @@ export async function signup(
                 email,
               },
             });
+
+            await tx.user.update({
+              where: { id: userId },
+              data: { speaker_id: userTypeId },
+            });
+
             break;
         }
       });
     }
 
-    const session = await lucia.createSession(userId, {});
+    const session = await lucia.createSession(userId, { type });
     const sessionCookie = lucia.createSessionCookie(session.id);
 
     (await cookies()).set(

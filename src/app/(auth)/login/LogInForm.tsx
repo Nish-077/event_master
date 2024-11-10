@@ -26,8 +26,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function LogInForm() {
-  const [error, setError] = useState<string>();
-
   const form = useForm<LogInValues>({
     resolver: zodResolver(logInSchema),
     defaultValues: {
@@ -36,19 +34,26 @@ export default function LogInForm() {
     },
   });
 
+  const { toast } = useToast();
+
   async function handler(values: LogInValues) {
-    setError(undefined);
     const { error } = await login(values);
     if (error) {
-      setError(error);
+      toast({
+        title: "User doesn't exist",
+        description: error,
+        variant: "destructive",
+      });
       return;
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handler)} className="w-full max-w-[17rem] space-y-3">
-        {error && <p className="text-center text-destructive">{error}</p>}
+      <form
+        onSubmit={form.handleSubmit(handler)}
+        className="w-full max-w-[17rem] space-y-3"
+      >
         <FormField
           control={form.control}
           name="email"
