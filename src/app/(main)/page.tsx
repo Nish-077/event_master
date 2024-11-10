@@ -12,7 +12,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-8">
+    <div className="min-h-screen bg-gray-100 p-8">
       <NavBar />
 
       <Card className="mb-8">
@@ -20,7 +20,7 @@ export default async function HomePage() {
           <h2 className="text-2xl font-semibold">
             Welcome back, {user.participant?.first_name}! 👋
           </h2>
-          <p className="text-gray-600 mt-2">Here's what's happening today</p>
+          <p className="text-gray-600 mt-2">Here's what's happening</p>
         </CardContent>
       </Card>
 

@@ -1,7 +1,7 @@
-import { Calendar, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import prisma from "@/lib/prisma";
 import { formatRelativeDate, formatTime } from "@/lib/utils";
+import { Calendar, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 async function EventsList() {
@@ -14,11 +14,9 @@ async function EventsList() {
       agenda: string;
     }[]
   >`
-    SELECT id, title, date, time, agenda FROM Event
-    WHERE (date = CURDATE() AND time > CURTIME())
-    OR (date > CURDATE())
-    ORDER BY date ASC, time ASC;
-  `;
+      SELECT id, title, date, time, agenda FROM Event
+      ORDER BY date ASC, time ASC;
+    `;
 
   return (
     <div className="space-y-4">
@@ -46,13 +44,13 @@ async function EventsList() {
   );
 }
 
-export default function UpComingEvents() {
+export default function AllEvents() {
   return (
     <Card className="shadow-xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          Upcoming Events
+          All Events
         </CardTitle>
       </CardHeader>
       <CardContent>

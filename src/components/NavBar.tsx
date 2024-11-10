@@ -17,8 +17,8 @@ export default function NavBar() {
   }
 
   return (
-    <div className="flex justify-between bg-card w-full p-8 mb-4 shadow-lg rounded-xl">
-      <h1 className="font-bold text-2xl">EVENTMASTER</h1>
+    <div className="mb-8 flex items-center justify-between">
+      <h1 className="font-bold text-3xl">EventMaster</h1>
       <div className="flex items-center gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

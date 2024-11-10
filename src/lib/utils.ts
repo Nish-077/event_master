@@ -15,7 +15,7 @@ export function formatRelativeDate(date: Date) {
   const eventDate = new Date(date);
 
   if (currentDate.getFullYear() === eventDate.getFullYear()) {
-    return formatDate(eventDate, "d MMM");
+    return formatDate(eventDate, "EEE, d MMM");
   } else {
     return formatDate(eventDate, "d MMM, yyyy");
   }
