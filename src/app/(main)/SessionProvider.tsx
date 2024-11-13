@@ -1,10 +1,11 @@
 "use client";
 
-import { User, Session } from "lucia";
+import { UserData } from "@/lib/type";
+import { Session } from "lucia";
 import { createContext, useContext } from "react";
 
 interface SessionContext {
-  user: User;
+  user: UserData;
   session: Session;
 }
 

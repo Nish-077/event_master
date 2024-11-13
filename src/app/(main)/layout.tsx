@@ -1,6 +1,7 @@
 import { validateRequest } from "@/auth";
 import { redirect } from "next/navigation";
 import SessionProvider from "./SessionProvider";
+import NavBar from "@/app/(main)/NavBar";
 
 export default async function Layout({
   children,
@@ -13,8 +14,9 @@ export default async function Layout({
 
   return (
     <SessionProvider value={session}>
-      <div>
-        {children}
+      <div className="flex min-h-screen flex-col bg-gray-200">
+        <NavBar />
+        <div className="flex w-full grow gap-5 p-5">{children}</div>
       </div>
     </SessionProvider>
   );

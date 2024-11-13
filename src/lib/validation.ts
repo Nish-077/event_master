@@ -34,3 +34,14 @@ export const signUpSchema = z.object({
 });
 
 export type SignUpValues = z.infer<typeof signUpSchema>;
+
+export const newEventSchema = z.object({
+  title: reqString,
+  date: z.string(),
+  time: z.string(),
+  agenda: z.string(),
+  budget: z.string().transform((val) => Number(val)),
+  description: z.string(),
+});
+
+export type NewEventValues = z.infer<typeof newEventSchema>;
