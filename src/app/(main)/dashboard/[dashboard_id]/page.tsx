@@ -1,4 +1,4 @@
-import { getDashboardById, getEventParticipants } from "../action";
+import { getDashboardById, getEventParticipants, getEventFeedback } from "../action";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -26,6 +26,7 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
   const { data: participants } = await getEventParticipants(
     dashboard?.event.id || ""
   );
+  const { data: feedbacks } = await getEventFeedback(dashboard?.event.id || "");
 
   if (error || !dashboard) {
     return notFound();
@@ -142,8 +143,10 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participants?.map((participant: any) => (
-                  <TableRow key={participant.user_id}>
+                {participants?.map((participant: any, index: number) => (
+                  <TableRow 
+                    key={`${participant.user_id || participant.email || index}-${participant.name}`}
+                  >
                     <TableCell>{participant.name}</TableCell>
                     <TableCell>{participant.email}</TableCell>
                     <TableCell>{participant.phone}</TableCell>
@@ -160,6 +163,38 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-full mt-6">
+          <CardHeader>
+            <CardTitle>Event Feedback</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[375px] overflow-y-auto pr-2">
+              {feedbacks?.map((feedback) => (
+                <Card key={feedback.feedback_id} className="bg-gray-50">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{feedback.participant_name}</p>
+                        <p className="text-sm text-gray-500">{feedback.participant_email}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="font-bold">{feedback.rating}</span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">{feedback.comments}</p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      {new Date(feedback.feedback_date).toLocaleDateString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

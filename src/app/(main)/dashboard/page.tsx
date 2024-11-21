@@ -10,6 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { validateRequest } from "@/auth";
+import CreateEvent from "@/components/CreateEvent";
 
 export default async function DashboardPage() {
   const { data: dashboards, error } = await getDashboardData();
@@ -33,12 +34,7 @@ export default async function DashboardPage() {
             Manage and monitor your events
           </p>
         </div>
-        <Link href="/events/create">
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create Event
-          </Button>
-        </Link>
+        <CreateEvent />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

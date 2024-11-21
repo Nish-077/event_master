@@ -24,9 +24,18 @@ import { TabsContent } from "@radix-ui/react-tabs";
 import { validateRequest } from "@/auth";
 import RegisterEvent from "./RegisterEvent";
 import { Badge } from "@/components/ui/badge";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 
 interface PageProps {
   params: { event_id: string };
+}
+
+interface RegistrationResult {
+  registration_id: number;
+  participant_id: number;
+  event_id: number;
+  attendance_status: string;
+  registration_time: Date;
 }
 
 export default async function EventDetailsPage({ params }: PageProps) {
@@ -88,13 +97,28 @@ export default async function EventDetailsPage({ params }: PageProps) {
 
   const { user, session } = await validateRequest();
 
-  const isRegistered =
-    await prisma.$queryRaw`SELECT * FROM registration WHERE participant_id = ${user?.participant?.participant_id} AND event_id = ${event_id} LIMIT 1`;
+  const isRegistered = await prisma.$queryRaw<Array<RegistrationResult>>`
+    SELECT * FROM registration 
+    WHERE participant_id = ${user?.participant?.participant_id} 
+    AND event_id = ${event_id} 
+    LIMIT 1
+  `;
 
   const eventDateTime = new Date(event.date);
   eventDateTime.setHours(event.time.getHours(), event.time.getMinutes());
 
   const isUpcoming = eventDateTime > new Date();
+
+  const registration = isRegistered?.[0] as any;
+
+  const canProvideFeedback = registration &&
+    !isUpcoming &&
+    registration.attendance_status === 'Attended' &&
+    !(await prisma.$queryRaw<Array<{ 1: number }>>`
+      SELECT 1 FROM feedback
+      WHERE registration_id = ${registration.registration_id}
+      LIMIT 1
+    `)[0]?.[1];
 
   return (
     <div className="min-h-screen w-full">
@@ -113,9 +137,14 @@ export default async function EventDetailsPage({ params }: PageProps) {
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-4xl font-bold">{event.title}</h1>
-            {isUpcoming && session && session.type === "Participant" && (
-              <RegisterEvent event_id={event_id} />
-            )}
+            <div className="flex flex-col gap-2 items-center justify-center">
+              {isUpcoming && session && session.type === "Participant" && (
+                <RegisterEvent event_id={event_id} />
+              )}
+              {canProvideFeedback && (
+                <FeedbackDialog registrationId={registration.registration_id} />
+              )}
+            </div>
           </div>
 
           <div className="flex gap-6 text-white/90">
@@ -152,7 +181,7 @@ export default async function EventDetailsPage({ params }: PageProps) {
                 </p>
               </div>
 
-              {session?.type === 'Organiser' &&
+              {session?.type === "Organiser" && (
                 <>
                   <Separator />
 
@@ -169,7 +198,7 @@ export default async function EventDetailsPage({ params }: PageProps) {
                     </p>
                   </div>
                 </>
-              }
+              )}
             </CardContent>
           </Card>
 

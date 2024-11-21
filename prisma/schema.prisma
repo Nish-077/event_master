@@ -73,10 +73,10 @@ model dashboard {
   dashboard_id             String                     @id @db.VarChar(20)
   event_id                 String                     @db.VarChar(20)
   feedback_score           Decimal?                   @default(0.00) @db.Decimal(3, 2)
-  demographics             Json?
   attendance_count         Int?                       @default(0)
   admin_monitors_dashboard admin_monitors_dashboard[]
   event                    event                      @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "dashboard_ibfk_1")
+  demographic_data         demographic_data[]
 
   @@index([event_id], map: "event_id")
 }
@@ -134,14 +134,14 @@ model participant {
   first_name           String                 @db.VarChar(20)
   last_name            String?                @db.VarChar(20)
   email                String                 @unique(map: "email") @db.VarChar(30)
-  street               String?                @db.Text
-  city                 String?                @db.Text
-  state                String?                @db.Text
-  postal_code          String?                @db.Char(6)
   type                 participant_type
+  address_id           String?                @db.VarChar(20)
+  address              address?               @relation(fields: [address_id], references: [address_id], onUpdate: NoAction, map: "participant_ibfk_1")
   participant_phone_no participant_phone_no[]
   registration         registration[]
   user                 User[]
+
+  @@index([address_id], map: "address_id")
 }
 
 model participant_phone_no {
@@ -272,6 +272,44 @@ model event_agenda {
   event     event  @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_agenda_ibfk_1")
 
   @@index([event_id], map: "idx_event_agenda_event_id")
+}
+
+model address {
+  address_id  String        @id @db.VarChar(20)
+  street      String        @db.Text
+  postal_code String        @db.Char(6)
+  city_id     String?       @db.VarChar(20)
+  city        city?         @relation(fields: [city_id], references: [city_id], onDelete: Cascade, onUpdate: NoAction, map: "address_ibfk_1")
+  participant participant[]
+
+  @@index([city_id], map: "city_id")
+}
+
+model city {
+  city_id   String    @id @db.VarChar(20)
+  city_name String    @db.VarChar(50)
+  state_id  String?   @db.VarChar(20)
+  address   address[]
+  state     state?    @relation(fields: [state_id], references: [state_id], onDelete: Cascade, onUpdate: NoAction, map: "city_ibfk_1")
+
+  @@index([state_id], map: "state_id")
+}
+
+model demographic_data {
+  demographic_id String     @id @db.VarChar(20)
+  dashboard_id   String?    @db.VarChar(20)
+  category       String     @db.VarChar(50)
+  value          String     @db.VarChar(50)
+  count          Int
+  dashboard      dashboard? @relation(fields: [dashboard_id], references: [dashboard_id], onDelete: Cascade, onUpdate: NoAction, map: "demographic_data_ibfk_1")
+
+  @@index([dashboard_id], map: "dashboard_id")
+}
+
+model state {
+  state_id   String @id @db.VarChar(20)
+  state_name String @db.VarChar(50)
+  city       city[]
 }
 
 enum registration_attendance_status {

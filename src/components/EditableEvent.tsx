@@ -8,7 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRelativeDate, formatTime } from "@/lib/utils";
 import { updateEventDetails } from "@/app/(main)/dashboard/action";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Calendar, Clock, IndianRupee } from "lucide-react";
+import { Pencil, Save, X, Calendar, Clock, IndianRupee, Plus, Trash2 } from "lucide-react";
+
+interface Session {
+  session_id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  speaker: string;
+  location: string;
+}
 
 interface Event {
   id: string;
@@ -17,6 +26,7 @@ interface Event {
   time: string;
   budget?: number;
   description?: string;
+  sessions: Session[];
 }
 
 interface EditableEventProps {
@@ -162,6 +172,107 @@ export default function EditableEvent({ event }: EditableEventProps) {
                   className="transition-all duration-200 focus:ring-2"
                 />
               </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium">Sessions</label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditedEvent({
+                        ...editedEvent,
+                        sessions: [
+                          ...editedEvent.sessions,
+                          {
+                            session_id: `new-${Date.now()}`,
+                            title: "",
+                            start_time: "",
+                            end_time: "",
+                            speaker: "",
+                            location: "",
+                          },
+                        ],
+                      });
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Add Session
+                  </Button>
+                </div>
+                {editedEvent.sessions.map((session, index) => (
+                  <Card key={session.session_id} className="p-4">
+                    <div className="space-y-4">
+                      <div className="flex justify-between">
+                        <Input
+                          placeholder="Session Title"
+                          value={session.title}
+                          onChange={(e) => {
+                            const newSessions = [...editedEvent.sessions];
+                            newSessions[index].title = e.target.value;
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2"
+                          onClick={() => {
+                            const newSessions = editedEvent.sessions.filter(
+                              (_, i) => i !== index
+                            );
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          type="time"
+                          value={session.start_time.split("T")[1]?.substring(0, 5) || ""}
+                          onChange={(e) => {
+                            const newSessions = [...editedEvent.sessions];
+                            newSessions[index].start_time = `1970-01-01T${e.target.value}:00.000Z`;
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                          placeholder="Start Time"
+                        />
+                        <Input
+                          type="time"
+                          value={session.end_time.split("T")[1]?.substring(0, 5) || ""}
+                          onChange={(e) => {
+                            const newSessions = [...editedEvent.sessions];
+                            newSessions[index].end_time = `1970-01-01T${e.target.value}:00.000Z`;
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                          placeholder="End Time"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          placeholder="Speaker"
+                          value={session.speaker}
+                          onChange={(e) => {
+                            const newSessions = [...editedEvent.sessions];
+                            newSessions[index].speaker = e.target.value;
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                        />
+                        <Input
+                          placeholder="Location"
+                          value={session.location}
+                          onChange={(e) => {
+                            const newSessions = [...editedEvent.sessions];
+                            newSessions[index].location = e.target.value;
+                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
               <Button
                 type="submit"
                 className="w-full transition-all duration-200 hover:scale-[1.02]"
@@ -212,6 +323,32 @@ export default function EditableEvent({ event }: EditableEventProps) {
                   <IndianRupee className="h-4 w-4" />
                   {event.budget || "0"}
                 </span>
+              </div>
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Sessions</h3>
+                <div className="space-y-4">
+                  {event.sessions.map((session) => (
+                    <Card key={session.session_id} className="p-4">
+                      <div className="space-y-2">
+                        <h4 className="font-semibold">{session.title}</h4>
+                        <div className="grid grid-cols-2 gap-x-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Time: </span>
+                            {formatTime(new Date(session.start_time))} - {formatTime(new Date(session.end_time))}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Speaker: </span>
+                            {session.speaker}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Location: </span>
+                            {session.location}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
           )}
