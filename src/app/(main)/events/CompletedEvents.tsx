@@ -14,10 +14,12 @@ async function EventsList() {
       agenda: string;
     }[]
   >`
-      SELECT id, title, date, time, agenda FROM Event
-      WHERE (date = CURDATE() AND time < CURTIME())
-      OR (date < CURDATE())
-      ORDER BY date ASC, time ASC;
+      SELECT e.id, e.title, e.date, e.time,
+             (SELECT ea.item FROM event_agenda ea WHERE ea.event_id = e.id ORDER BY ea.agenda_id ASC LIMIT 1) as agenda
+      FROM event e
+      WHERE (e.date = CURDATE() AND e.time < CURTIME())
+      OR (e.date < CURDATE())
+      ORDER BY e.date ASC, e.time ASC;
     `;
 
   return (

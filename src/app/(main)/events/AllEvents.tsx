@@ -14,8 +14,10 @@ async function EventsList() {
       agenda: string;
     }[]
   >`
-      SELECT id, title, date, time, agenda FROM Event
-      ORDER BY date ASC, time ASC;
+      SELECT e.id, e.title, e.date, e.time,
+             (SELECT ea.item FROM event_agenda ea WHERE ea.event_id = e.id ORDER BY ea.agenda_id ASC LIMIT 1) as agenda
+      FROM event e
+      ORDER BY e.date ASC, e.time ASC;
     `;
 
   return (

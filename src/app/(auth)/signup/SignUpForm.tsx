@@ -61,87 +61,114 @@ export default function SignUpForm() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="w-full max-w-[17rem] space-y-3"
+        className="w-full max-w-[20rem] space-y-4"
       >
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-semibold">Email</FormLabel>
-              <FormControl>
-                <Input {...field} type="email" placeholder="Enter Email" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-semibold">Firstname</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter Firstname" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-semibold">Lastname</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter Lastname" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-semibold">User Type</FormLabel>
-              <FormControl>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Participant">Participant</SelectItem>
-                    <SelectItem value="Speaker">Speaker</SelectItem>
-                    <SelectItem value="Organiser">Organiser</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-semibold">Password</FormLabel>
-              <FormControl>
-                <PasswordInput {...field} placeholder="Enter Password" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full">
-          Sign up
+        <div className="grid gap-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-sm font-semibold text-slate-700">Email</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field} 
+                    type="email" 
+                    placeholder="Enter Email"
+                    className="rounded-lg border-slate-200 bg-slate-50 px-4 py-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-semibold text-slate-700">Firstname</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Enter Firstname"
+                      className="rounded-lg border-slate-200 bg-slate-50 px-4 py-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-sm font-semibold text-slate-700">Lastname</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="Enter Lastname"
+                      className="rounded-lg border-slate-200 bg-slate-50 px-4 py-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-sm font-semibold text-slate-700">User Type</FormLabel>
+                <FormControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger className="rounded-lg border-slate-200 bg-slate-50 px-4 py-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-lg border-slate-200">
+                      <SelectItem value="Participant" className="hover:bg-slate-50">Participant</SelectItem>
+                      <SelectItem value="Speaker" className="hover:bg-slate-50">Speaker</SelectItem>
+                      <SelectItem value="Organiser" className="hover:bg-slate-50">Organiser</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-sm font-semibold text-slate-700">Password</FormLabel>
+                <FormControl>
+                  <PasswordInput 
+                    {...field} 
+                    placeholder="Enter Password"
+                    className="rounded-lg border-slate-200 bg-slate-50 px-4 py-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 py-6 text-lg font-semibold tracking-wide hover:from-blue-600 hover:to-purple-600 transition-all duration-300"
+        >
+          Create Account
         </Button>
       </form>
     </Form>

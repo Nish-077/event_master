@@ -87,11 +87,11 @@ model event {
   title               String                @db.VarChar(32)
   date                DateTime              @db.Date
   time                DateTime              @db.Time(0)
-  agenda              String?               @db.Text
   budget              Int?
   description         String?               @db.Text
   admin_manages_event admin_manages_event[]
   dashboard           dashboard[]
+  event_agenda        event_agenda[]
   event_session       event_session[]
   organiser_for_event organiser_for_event[]
   registration        registration[]
@@ -163,9 +163,9 @@ model registration {
   admin_approves_registration admin_approves_registration[]
   feedback                    feedback[]
   participant                 participant?                   @relation(fields: [participant_id], references: [participant_id], onDelete: NoAction, onUpdate: NoAction, map: "registration_ibfk_1")
-  event                       event                          @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "registration_ibfk_2")
+  event                       event                          @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "registration_ibfk_2")
 
-  @@index([event_id], map: "event_id")
+  @@unique([event_id, participant_id], map: "unique_event_participant")
   @@index([participant_id], map: "participant_id")
 }
 
@@ -256,7 +256,6 @@ model event_session {
   topic               String                @db.VarChar(100)
   building            String                @db.VarChar(20)
   room_no             String                @db.VarChar(10)
-  capacity            Int?
   start_time          DateTime              @db.Time(0)
   end_time            DateTime              @db.Time(0)
   event               event                 @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_session_ibfk_1")
@@ -264,6 +263,15 @@ model event_session {
 
   @@id([event_session_id, event_id])
   @@index([event_id], map: "event_id")
+}
+
+model event_agenda {
+  agenda_id String @id @db.VarChar(20)
+  event_id  String @db.VarChar(20)
+  item      String @db.Text
+  event     event  @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "event_agenda_ibfk_1")
+
+  @@index([event_id], map: "idx_event_agenda_event_id")
 }
 
 enum registration_attendance_status {

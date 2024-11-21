@@ -39,9 +39,10 @@ export const newEventSchema = z.object({
   title: reqString,
   date: z.string(),
   time: z.string(),
-  agenda: z.string(),
-  budget: z.string().transform((val) => Number(val)),
+  budget: z.number().min(0, "Budget must be a positive number"),
   description: z.string(),
+  sessions: z.array(z.any()),
+  agendaItems: z.array(z.string().trim().min(1, "Agenda item cannot be empty")),
 });
 
 export type NewEventValues = z.infer<typeof newEventSchema>;

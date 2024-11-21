@@ -5,8 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatTime(time: Date) {
-  return time.toLocaleTimeString("en-IN", {
+export function formatTime(time: Date | string) {
+  const date = new Date(time);
+  return date.toLocaleTimeString("en-IN", {
     hour: "numeric",
     minute: "numeric",
     hour12: true,

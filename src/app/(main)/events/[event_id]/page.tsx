@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react"; // Import useState
 import {
   Card,
   CardContent,
@@ -21,6 +21,9 @@ import { formatRelativeDate, formatTime } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsContent } from "@radix-ui/react-tabs";
+import { validateRequest } from "@/auth";
+import RegisterEvent from "./RegisterEvent";
+import { Badge } from "@/components/ui/badge";
 
 interface PageProps {
   params: { event_id: string };
@@ -29,162 +32,206 @@ interface PageProps {
 export default async function EventDetailsPage({ params }: PageProps) {
   const { event_id } = await params;
 
-  const event_details = await prisma.$queryRaw<{
-    title: string;
-    date: Date;
-    time: Date;
-    agenda: string;
-    budget?: number;
-    description: string;
-    topic: string[];
-    building: string[];
-    room_no: string[];
-    capacity: number[];
-    start_time: Date[];
-    end_time: Date[];
-    first_name: string[];
-    last_name?: string[];
-  }>`
-
+  const event_details = await prisma.$queryRaw<
+    Array<{
+      title: string;
+      date: Date;
+      time: Date;
+      budget?: number;
+      description: string;
+      sessions: object[];
+      agendas: object[];
+    }>
+  >`
+    SELECT
+      e.title, e.date, e.time, e.budget, e.description,
+      JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'topic', s.topic,
+          'building', s.building,
+          'room_no', s.room_no,
+          'start_time', s.start_time,
+          'end_time', s.end_time
+        )
+      ) AS sessions,
+      JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'agenda_id', ea.agenda_id,
+          'item', ea.item
+        )
+      ) AS agendas
+    FROM event e
+    LEFT JOIN event_session s ON e.id = s.event_id
+    LEFT JOIN event_agenda ea ON e.id = ea.event_id
+    WHERE e.id = ${event_id}
+    GROUP BY e.id
   `;
 
-  if (!event) {
+  if (!event_details || event_details.length === 0) {
     return notFound();
   }
 
-  return (
-    <div className="min-h-screen w-full -translate-y-4 px-8">
-      <Link href="/events">
-        <Button
-          variant="ghost"
-          className="-translate-x-3 my-6 text-lg font-semibold flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Events
-        </Button>
-      </Link>
+  const event = event_details[0];
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">{event_details.title}</h1>
+  const sessions = event.sessions || [];
+  const agendas = event.agendas || [];
+
+  const uniqueSessions = sessions.filter(
+    (session: any, index: number, self: any[]) =>
+      index === self.findIndex((s) => s.topic === session.topic)
+  );
+
+  const uniqueAgendas = agendas.filter(
+    (agenda: any, index: number, self: any[]) =>
+      index === self.findIndex((a) => a.item === agenda.item)
+  );
+
+  const { user, session } = await validateRequest();
+
+  const isRegistered =
+    await prisma.$queryRaw`SELECT * FROM registration WHERE participant_id = ${user?.participant?.participant_id} AND event_id = ${event_id} LIMIT 1`;
+
+  const eventDateTime = new Date(event.date);
+  eventDateTime.setHours(event.time.getHours(), event.time.getMinutes());
+
+  const isUpcoming = eventDateTime > new Date();
+
+  return (
+    <div className="min-h-screen w-full">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 rounded-b-lg shadow-lg">
+        <Link href="/events">
+          <Button
+            variant="ghost"
+            className="text-white hover:text-white/80 my-2 text-lg font-semibold flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Events
+          </Button>
+        </Link>
+
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-4xl font-bold">{event.title}</h1>
+            {isUpcoming && session && session.type === "Participant" && (
+              <RegisterEvent event_id={event_id} />
+            )}
+          </div>
+
+          <div className="flex gap-6 text-white/90">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              <span>{formatRelativeDate(event.date)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              <span>{formatTime(event.time)}</span>
+            </div>
+            <Badge variant={isUpcoming ? "default" : "secondary"}>
+              {isUpcoming ? "Upcoming" : "Past Event"}
+            </Badge>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Event Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-gray-500">Date</p>
-                    <p className="font-semibold">
-                      {formatRelativeDate(event_details.date)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-gray-500">Time</p>
-                    <p className="font-semibold">
-                      {formatTime(event_details.time)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
+      <div className="max-w-6xl mx-auto px-8 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <Card className="md:col-span-2 shadow-xl hover:shadow-2xl transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-2xl">Event Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div>
-                <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-500" />
                   Description
                 </h2>
-                <p className="text-gray-600 leading-relaxed">
-                  {event_details.description}
+                <p className="text-gray-600 leading-relaxed text-lg">
+                  {event.description}
                 </p>
               </div>
 
-              <Separator />
+              {session?.type === 'Organiser' &&
+                <>
+                  <Separator />
 
-              <div>
-                <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                  <IndianRupee className="h-5 w-5" /> Budget
-                </h2>
-                <p className="text-gray-600 font-medium">
-                  {event_details.budget?.toLocaleString("en-IN", {
-                    style: "currency",
-                    currency: "INR",
-                  })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                  <div>
+                    <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <IndianRupee className="h-5 w-5 text-green-500" />
+                      Event Budget
+                    </h2>
+                    <p className="text-2xl font-bold text-green-600">
+                      {event.budget?.toLocaleString("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                      })}
+                    </p>
+                  </div>
+                </>
+              }
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-xl">
-          <Tabs className="w-full p-3" defaultValue="Agenda">
-            <TabsList className="w-full h-10 flex justify-center gap-14">
-              <TabsTrigger className="font-semibold text-sm" value="Agenda">
-                Agenda
-              </TabsTrigger>
-              <TabsTrigger className="font-semibold text-sm" value="Session">
-                Session
-              </TabsTrigger>
-              <TabsTrigger
-                className="font-semibold text-sm"
-                value="Particpants"
-              >
-                Particpants
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="Agenda">
-              <CardHeader>
-                <CardDescription>Schedule of activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">
-                  {event_details.agenda?.split("\n").map((item, index) => (
-                    <div key={index} className="py-2 border-b last:border-0">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </TabsContent>
-            <TabsContent value="Session">
-              <CardHeader>
-                <CardDescription>Session Schedule</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">
-                  {event_details.agenda?.split("\n").map((item, index) => (
-                    <div key={index} className="py-2 border-b last:border-0">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </TabsContent>
-            <TabsContent value="Particpants">
-              <CardHeader>
-                <CardDescription>List of Participants</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">
-                  {event_details.agenda?.split("\n").map((item, index) => (
-                    <div key={index} className="py-2 border-b last:border-0">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </TabsContent>
-          </Tabs>
-        </Card>
+          {/* Sidebar */}
+          <Card className="h-fit shadow-xl hover:shadow-2xl transition-shadow">
+            <Tabs className="w-full" defaultValue="Agenda">
+              <TabsList className="w-full h-12 grid grid-cols-2">
+                <TabsTrigger value="Agenda">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Agenda
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="Sessions">
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Sessions
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="Agenda" className="mt-4">
+                <CardContent>
+                  <div className="space-y-3">
+                    {uniqueAgendas.map((agendaItem: any, index: number) => (
+                      <div
+                        key={index}
+                        className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        {agendaItem.item}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </TabsContent>
+
+              <TabsContent value="Sessions" className="mt-4">
+                <CardContent>
+                  <div className="space-y-4">
+                    {uniqueSessions.map((session: any, index: number) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <h3 className="font-semibold text-lg text-blue-600">
+                          {session.topic}
+                        </h3>
+                        <p className="text-gray-600">
+                          {session.building}, Room {session.room_no}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {formatTime(session.start_time)} -{" "}
+                          {formatTime(session.end_time)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </div>
       </div>
     </div>
   );

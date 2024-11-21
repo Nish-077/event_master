@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Menu, Search } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -16,13 +16,25 @@ import {
 import { logout } from "@/app/(auth)/action";
 import Link from "next/link";
 import { useSession } from "@/app/(main)/SessionProvider";
+import { useState, useEffect } from "react";
 
 export default function NavBar() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   async function handler() {
     await logout();
   }
 
-  const { user } = useSession();
+  const { user, session } = useSession();
 
   function getUserInitials() {
     const participant = user.participant;
@@ -48,36 +60,55 @@ export default function NavBar() {
 
   return (
     <header>
-      <div className="sticky bg-card px-5 py-6 shadow-lg mb-2 top-0 z-10 flex items-center justify-between">
-        <Link href={"/"}>
-          <h1 className="font-bold text-3xl">EventMaster</h1>
-        </Link>
-        <div className="flex gap-6">
-          <Link href={"/events"}>
-            <Button variant="secondary" className="text-sm font-semibold">
-              Events
-            </Button>
+      <div className={`sticky px-5 py-4 top-0 z-10 backdrop-blur-sm transition-all duration-300 
+        ${isScrolled ? 'bg-card/80 shadow-lg' : 'bg-card'}`}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href={"/"}>
+            <h1 className="font-bold text-3xl hover:text-primary transition-colors">EventMaster</h1>
           </Link>
-          <div className="flex items-center gap-4">
+
+          {/* Mobile Menu Button */}
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden">
+            <Menu className="h-6 w-6" />
+          </button>
+
+          {/* Desktop Navigation */}
+          <div className={`flex-1 items-center justify-end gap-6 md:flex
+            ${isMobileMenuOpen ? 'flex flex-col absolute top-16 left-0 right-0 bg-card p-4 shadow-lg' : 'hidden'}`}>
+
+            {session.type === "Organiser" && (
+              <Link href={"/dashboard"}>
+                <Button variant="ghost" className="text-sm font-semibold hover:bg-primary hover:text-primary-foreground">
+                  Dashboard
+                </Button>
+              </Link>
+            )}
+            
+            <Link href={"/events"}>
+              <Button variant="ghost" className="text-sm font-semibold hover:bg-primary hover:text-primary-foreground">
+                Events
+              </Button>
+            </Link>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="flex items-center gap-2 hover:bg-primary/10">
+                  <Avatar className="h-8 w-8 ring-2 ring-primary/20 transition-all hover:ring-primary">
                     <AvatarImage />
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuItem className="hover:bg-primary/10 cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem className="hover:bg-destructive/10 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <Button onClick={handler} variant="ghost" className="pl-0">
+                  <button onClick={handler} className="w-full text-left">
                     Log Out
-                  </Button>
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
