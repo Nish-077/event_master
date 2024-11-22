@@ -4,15 +4,14 @@ import prisma from "@/lib/prisma";
 
 interface DashboardQueryResult {
   dashboard_id: string;
-  feedback_score: number;
   demographics: object;
-  attendance_count: number;
+  attended_count: number;
   event_id: string;
   event_title: string;
   event_date: Date;
   event_time: Date;
   event_description: string;
-  total_attendees: number;
+  total_registrants: number;
   average_rating: number | null;
 }
 
@@ -23,6 +22,8 @@ interface DashboardDetailQueryResult extends DashboardQueryResult {
   budget: number;
   description: string;
   sessions: SessionQueryResult[];
+  total_registrants: number;
+  attendance_count: number;
 }
 
 interface UpdatedEventResult {
@@ -62,57 +63,166 @@ interface SessionQueryResult {
   location: string;
 }
 
+interface Speaker {
+  speaker_id: string;
+  name: string;
+}
+
+export async function getAllSpeakers() {
+  try {
+    const speakers = await prisma.$queryRaw<Speaker[]>`
+      SELECT 
+        speaker_id,
+        CONCAT(first_name, ' ', COALESCE(last_name, '')) as name
+      FROM speaker
+      ORDER BY first_name, last_name
+    `;
+    return { data: speakers, error: null };
+  } catch (error) {
+    console.error("Error fetching speakers:", error);
+    return { data: null, error: "Failed to fetch speakers" };
+  }
+}
+
+export async function updateEventSession(eventId: string, sessions: any[]) {
+  try {
+    // First, get all existing sessions for this event
+    const existingSessions = await prisma.$queryRaw<{ event_session_id: string }[]>`
+      SELECT event_session_id
+      FROM event_session
+      WHERE event_id = ${eventId}
+    `;
+
+    // Delete sessions that are no longer in the updated list
+    const updatedSessionIds = sessions.map(s => s.session_id).filter(id => !id.startsWith('new-'));
+    const deletedSessionIds = existingSessions
+      .map(s => s.event_session_id)
+      .filter(id => !updatedSessionIds.includes(id));
+
+    for (const sessionId of deletedSessionIds) {
+      await prisma.$executeRaw`
+        DELETE FROM event_session 
+        WHERE event_session_id = ${sessionId} 
+        AND event_id = ${eventId}
+      `;
+    }
+
+    // Update or create sessions
+    for (const session of sessions) {
+      if (session.session_id.startsWith('new-')) {
+        // Create new session
+        const [newSession] = await prisma.$queryRaw<[{ event_session_id: string }]>`
+          INSERT INTO event_session (
+            event_session_id, event_id, topic, 
+            start_time, end_time, building, room_no
+          )
+          VALUES (
+            UUID(), ${eventId}, ${session.title},
+            ${new Date(session.start_time)}, ${new Date(session.end_time)},
+            ${session.location.split(' - ')[0]}, ${session.location.split(' - ')[1]}
+          )
+          RETURNING event_session_id
+        `;
+
+        // Insert speaker assignment if speaker is selected
+        if (session.speaker_id) {
+          await prisma.$executeRaw`
+            INSERT INTO speaker_for_session (speaker_id, session_id, event_id)
+            VALUES (${session.speaker_id}, ${newSession.event_session_id}, ${eventId})
+          `;
+        }
+      } else {
+        // Update existing session
+        await prisma.$executeRaw`
+          UPDATE event_session 
+          SET 
+            topic = ${session.title},
+            start_time = ${new Date(session.start_time)},
+            end_time = ${new Date(session.end_time)},
+            building = ${session.location.split(' - ')[0]},
+            room_no = ${session.location.split(' - ')[1]}
+          WHERE event_session_id = ${session.session_id}
+          AND event_id = ${eventId}
+        `;
+
+        // Update speaker assignment
+        await prisma.$executeRaw`
+          DELETE FROM speaker_for_session 
+          WHERE session_id = ${session.session_id}
+          AND event_id = ${eventId}
+        `;
+
+        if (session.speaker_id) {
+          await prisma.$executeRaw`
+            INSERT INTO speaker_for_session (speaker_id, session_id, event_id)
+            VALUES (${session.speaker_id}, ${session.session_id}, ${eventId})
+          `;
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating sessions:", error);
+    return { error: "Failed to update sessions" };
+  }
+}
+
 export async function getDashboardData() {
   try {
     const dashboards = await prisma.$queryRaw<DashboardQueryResult[]>`
       SELECT 
-        d.dashboard_id,
-        d.feedback_score,
-        d.attendance_count,
-        e.id as event_id,
-        e.title as event_title,
-        e.date as event_date,
-        e.time as event_time,
+        e.id AS event_id,
+        e.title AS event_title,
+        e.date AS event_date,
+        e.time AS event_time,
         e.description as event_description,
-        (
-          SELECT COUNT(r.registration_id)
-          FROM registration r
-          WHERE r.event_id = e.id AND r.attendance_status = 'Attended'
-        ) as total_attendees,
+        COUNT(DISTINCT r.participant_id) AS total_registrants,
+        d.attendance_count AS attended_count,
         (
           SELECT AVG(f.rating)
           FROM feedback f
           JOIN registration r ON f.registration_id = r.registration_id
           WHERE r.event_id = e.id
-        ) as average_rating
-      FROM dashboard d
-      JOIN event e ON d.event_id = e.id
-      ORDER BY e.date DESC
+        ) as average_rating,
+        d.dashboard_id
+      FROM 
+        event e
+      LEFT JOIN 
+        registration r ON e.id = r.event_id
+      LEFT JOIN
+        dashboard d ON e.id = d.event_id
+      GROUP BY 
+        e.id, e.title, e.date, e.time, e.description, d.dashboard_id, d.attendance_count
+      ORDER BY 
+        e.date ASC, e.time ASC
     `;
 
     // Fetch demographics separately for each dashboard
-    const formattedDashboards = await Promise.all(dashboards.map(async (d: any) => {
-      const demographics = await prisma.$queryRaw`
+    const formattedDashboards = await Promise.all(
+      dashboards.map(async (d: any) => {
+        const demographics = await prisma.$queryRaw`
         SELECT category, value, count
         FROM demographic_data
         WHERE dashboard_id = ${d.dashboard_id}
       `;
 
-      return {
-        ...d,
-        feedback_score: Number(d.feedback_score),
-        demographics: demographics,
-        event: {
-          id: d.event_id,
-          title: d.event_title,
-          date: d.event_date,
-          time: d.event_time,
-          description: d.event_description,
-        },
-        total_attendees: Number(d.total_attendees),
-        average_rating: d.average_rating ? Number(d.average_rating) : null,
-      };
-    }));
+        return {
+          ...d,
+          demographics: demographics,
+          event: {
+            id: d.event_id,
+            title: d.event_title,
+            date: d.event_date,
+            time: d.event_time,
+            description: d.event_description,
+          },
+          total_registrants: Number(d.total_registrants),
+          attended_count: Number(d.attended_count),
+          average_rating: d.average_rating ? Number(d.average_rating) : null,
+        };
+      })
+    );
 
     return { success: true, data: formattedDashboards };
   } catch (error) {
@@ -126,19 +236,18 @@ export async function getDashboardById(id: string) {
     const dashboard = await prisma.$queryRaw<DashboardDetailQueryResult[]>`
       SELECT 
         d.dashboard_id,
-        d.feedback_score,
-        d.attendance_count,
         e.id as event_id,
         e.title,
         e.date,
         e.time,
         e.budget,
         e.description,
+        get_total_registrants(e.id) as total_registrants,
         (
           SELECT COUNT(r.registration_id)
           FROM registration r
           WHERE r.event_id = e.id AND r.attendance_status = 'Attended'
-        ) as total_attendees,
+        ) as attendance_count,
         (
           SELECT AVG(f.rating)
           FROM feedback f
@@ -184,7 +293,6 @@ export async function getDashboardById(id: string) {
 
     const formattedDashboard = {
       ...dashboard[0],
-      feedback_score: Number(dashboard[0].feedback_score),
       demographics: demographics,
       event: {
         id: dashboard[0].event_id,
@@ -193,16 +301,17 @@ export async function getDashboardById(id: string) {
         time: dashboard[0].time.toISOString(),
         budget: dashboard[0].budget,
         description: dashboard[0].description,
-        sessions: sessions.map(s => ({
+        sessions: sessions.map((s) => ({
           ...s,
           start_time: s.start_time.toISOString(),
-          end_time: s.end_time.toISOString()
-        }))
+          end_time: s.end_time.toISOString(),
+        })),
       },
-      total_attendees: Number(dashboard[0].total_attendees),
+      attended_count: Number(dashboard[0].attendance_count) || 0,
       average_rating: dashboard[0].average_rating
         ? Number(dashboard[0].average_rating)
-        : null
+        : null,
+      total_registrants: Number(dashboard[0].total_registrants),
     };
 
     return { data: formattedDashboard, error: null };
@@ -266,15 +375,17 @@ export async function updateSession(sessionId: string, sessionData: any) {
 
 export async function getEventParticipants(eventId: string) {
   try {
-    const participants = await prisma.$queryRaw<{
-      first_name: string;
-      last_name: string;
-      email: string;
-      phone_number: string;
-      registration_date: Date;
-      attendance_status: string;
-      type: string;
-    }[]>`
+    const participants = await prisma.$queryRaw<
+      {
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone_number: string;
+        registration_date: Date;
+        attendance_status: string;
+        type: string;
+      }[]
+    >`
       SELECT 
         p.first_name,
         p.last_name,
@@ -292,7 +403,7 @@ export async function getEventParticipants(eventId: string) {
 
     return {
       data: participants.map((p) => ({
-        name: `${p.first_name} ${p.last_name || ''}`,
+        name: `${p.first_name} ${p.last_name || ""}`,
         email: p.email,
         phone: p.phone_number,
         registration_date: p.registration_date,
@@ -327,5 +438,17 @@ export async function getEventFeedback(eventId: string) {
   } catch (error) {
     console.error("Error fetching feedback:", error);
     return { data: null, error: "Failed to fetch feedback" };
+  }
+}
+
+export async function getAverageFeedback(eventId: string) {
+  try {
+    const [result] = await prisma.$queryRaw<[{ average: number }]>`
+      SELECT get_average_feedback(${eventId}) as average
+    `;
+    return { data: result.average, error: null };
+  } catch (error) {
+    console.error("Error getting average feedback:", error);
+    return { data: null, error: "Failed to get average feedback" };
   }
 }

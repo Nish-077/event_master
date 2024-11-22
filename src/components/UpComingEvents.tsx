@@ -3,8 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import prisma from "@/lib/prisma";
 import { formatRelativeDate, formatTime } from "@/lib/utils";
 import Link from "next/link";
+import { validateRequest } from "@/auth";
+import { isSpeakerAssignedToEvent } from "@/lib/utils";
+import { Badge } from "./ui/badge";
 
 async function EventsList() {
+  const { user, session } = await validateRequest();
   const events = await prisma.$queryRaw<
     {
       id: string;
@@ -22,16 +26,36 @@ async function EventsList() {
     ORDER BY e.date ASC, e.time ASC;
   `;
 
+  const eventsWithAssignments = await Promise.all(
+    events.map(async (event) => ({
+      ...event,
+      isAssigned:
+        session?.type === "Speaker" && user?.speaker?.speaker_id
+          ? await isSpeakerAssignedToEvent(user.speaker.speaker_id, event.id)
+          : false,
+    }))
+  );
+
   return (
     <div className="space-y-4">
-      {events.map((event, index) => (
+      {eventsWithAssignments.map((event, index) => (
         <div
           key={index}
           className="flex items-start gap-4 pb-4 last:pb-0 border-b last:border-0"
         >
           <div className="flex-1">
             <Link href={`/events/${event.id}`}>
-              <h3 className="font-bold">{event.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold">{event.title}</h3>
+                {event.isAssigned && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-100 text-green-800"
+                  >
+                    You're Speaking
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm font-semibold text-gray-600">
                 On {formatRelativeDate(event.date as Date)} at{" "}
                 {formatTime(event.time as Date)}

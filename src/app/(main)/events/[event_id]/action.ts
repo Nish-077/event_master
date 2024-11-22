@@ -79,3 +79,21 @@ export async function submitFeedback(values: {
     return { error: "Failed to submit feedback. Please try again." };
   }
 }
+
+export async function updateAttendanceStatus(
+  registrationId: string, 
+  newStatus: 'Attended' | 'Absent'
+) {
+  try {
+    // The update_attendance_count trigger will automatically update the dashboard
+    await prisma.$queryRaw`
+      UPDATE registration 
+      SET attendance_status = ${newStatus}
+      WHERE registration_id = ${registrationId}
+    `;
+    return { error: null };
+  } catch (error) {
+    console.error("Error updating attendance:", error);
+    return { error: "Failed to update attendance status" };
+  }
+}

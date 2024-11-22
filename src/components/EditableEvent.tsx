@@ -1,14 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRelativeDate, formatTime } from "@/lib/utils";
-import { updateEventDetails } from "@/app/(main)/dashboard/action";
+import {
+  updateEventDetails,
+  getAllSpeakers,
+  updateEventSession,
+} from "@/app/(main)/dashboard/action";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Save, X, Calendar, Clock, IndianRupee, Plus, Trash2 } from "lucide-react";
+import {
+  Pencil,
+  Save,
+  X,
+  Calendar,
+  Clock,
+  IndianRupee,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useSession } from "@/app/(main)/SessionProvider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Session {
   session_id: string;
@@ -17,6 +38,7 @@ interface Session {
   end_time: string;
   speaker: string;
   location: string;
+  speaker_id?: string;
 }
 
 interface Event {
@@ -33,24 +55,67 @@ interface EditableEventProps {
   event: Event;
 }
 
+interface Speaker {
+  speaker_id: string;
+  name: string;
+}
+
 export default function EditableEvent({ event }: EditableEventProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedEvent, setEditedEvent] = useState(event);
   const [isSaving, setIsSaving] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
   const { toast } = useToast();
+  const { user } = useSession();
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+
+  useEffect(() => {
+    const checkEditPermission = async () => {
+      if (!user?.organiser?.organiser_id) {
+        setCanEdit(false);
+        return;
+      }
+
+      // Check if current organiser is assigned to this event
+      const response = await fetch(`/api/events/${event.id}/organizers`);
+      const { organizers } = await response.json();
+
+      setCanEdit(
+        organizers.some(
+          (org: any) => org.organiser_id === user.organiser?.organiser_id
+        )
+      );
+    };
+
+    checkEditPermission();
+  }, [event.id]);
+
+  useEffect(() => {
+    const fetchSpeakers = async () => {
+      const result = await getAllSpeakers();
+      if (result.data) {
+        setSpeakers(result.data);
+      }
+    };
+    fetchSpeakers();
+  }, []);
 
   const handleSaveChanges = async () => {
     try {
       setIsSaving(true);
-      const result = await updateEventDetails(event.id, editedEvent);
+      // Update event details
+      const eventResult = await updateEventDetails(event.id, editedEvent);
+      if (eventResult.error) {
+        throw new Error(eventResult.error);
+      }
 
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-        return;
+      // Update sessions
+      const sessionResult = await updateEventSession(
+        event.id,
+        editedEvent.sessions
+      );
+      if (sessionResult.error) {
+        throw new Error(sessionResult.error);
       }
 
       toast({
@@ -58,6 +123,9 @@ export default function EditableEvent({ event }: EditableEventProps) {
         description: "Event details updated successfully",
       });
       setIsEditing(false);
+
+      // Refresh the page to show updated data
+      window.location.reload();
     } catch (error) {
       toast({
         title: "Error",
@@ -73,21 +141,23 @@ export default function EditableEvent({ event }: EditableEventProps) {
     <Card className="col-span-2 transition-all duration-200 hover:shadow-md">
       <CardHeader className="flex flex-row justify-between items-center border-b pb-4">
         <CardTitle className="text-xl font-bold">Event Details</CardTitle>
-        <Button
-          variant="ghost"
-          onClick={() => setIsEditing(!isEditing)}
-          className="hover:bg-secondary"
-        >
-          {isEditing ? (
-            <>
-              <X className="h-4 w-4 mr-2" /> Cancel
-            </>
-          ) : (
-            <>
-              <Pencil className="h-4 w-4 mr-2" /> Edit
-            </>
-          )}
-        </Button>
+        {canEdit && (
+          <Button
+            variant="ghost"
+            onClick={() => setIsEditing(!isEditing)}
+            className="hover:bg-secondary"
+          >
+            {isEditing ? (
+              <>
+                <X className="h-4 w-4 mr-2" /> Cancel
+              </>
+            ) : (
+              <>
+                <Pencil className="h-4 w-4 mr-2" /> Edit
+              </>
+            )}
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="pt-6">
         <div className="space-y-6">
@@ -209,7 +279,10 @@ export default function EditableEvent({ event }: EditableEventProps) {
                           onChange={(e) => {
                             const newSessions = [...editedEvent.sessions];
                             newSessions[index].title = e.target.value;
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
                         />
                         <Button
@@ -221,7 +294,10 @@ export default function EditableEvent({ event }: EditableEventProps) {
                             const newSessions = editedEvent.sessions.filter(
                               (_, i) => i !== index
                             );
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -230,42 +306,78 @@ export default function EditableEvent({ event }: EditableEventProps) {
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           type="time"
-                          value={session.start_time.split("T")[1]?.substring(0, 5) || ""}
+                          value={
+                            session.start_time.split("T")[1]?.substring(0, 5) ||
+                            ""
+                          }
                           onChange={(e) => {
                             const newSessions = [...editedEvent.sessions];
-                            newSessions[index].start_time = `1970-01-01T${e.target.value}:00.000Z`;
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            newSessions[index].start_time =
+                              `1970-01-01T${e.target.value}:00.000Z`;
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
                           placeholder="Start Time"
                         />
                         <Input
                           type="time"
-                          value={session.end_time.split("T")[1]?.substring(0, 5) || ""}
+                          value={
+                            session.end_time.split("T")[1]?.substring(0, 5) ||
+                            ""
+                          }
                           onChange={(e) => {
                             const newSessions = [...editedEvent.sessions];
-                            newSessions[index].end_time = `1970-01-01T${e.target.value}:00.000Z`;
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            newSessions[index].end_time =
+                              `1970-01-01T${e.target.value}:00.000Z`;
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
                           placeholder="End Time"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Speaker"
-                          value={session.speaker}
-                          onChange={(e) => {
+                        <Select
+                          value={session.speaker_id}
+                          onValueChange={(value) => {
                             const newSessions = [...editedEvent.sessions];
-                            newSessions[index].speaker = e.target.value;
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            newSessions[index].speaker_id = value;
+                            newSessions[index].speaker =
+                              speakers.find((s) => s.speaker_id === value)
+                                ?.name || "";
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Speaker" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {speakers.map((speaker) => (
+                              <SelectItem
+                                key={speaker.speaker_id}
+                                value={speaker.speaker_id}
+                              >
+                                {speaker.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Input
                           placeholder="Location"
                           value={session.location}
                           onChange={(e) => {
                             const newSessions = [...editedEvent.sessions];
                             newSessions[index].location = e.target.value;
-                            setEditedEvent({ ...editedEvent, sessions: newSessions });
+                            setEditedEvent({
+                              ...editedEvent,
+                              sessions: newSessions,
+                            });
                           }}
                         />
                       </div>
@@ -333,15 +445,22 @@ export default function EditableEvent({ event }: EditableEventProps) {
                         <h4 className="font-semibold">{session.title}</h4>
                         <div className="grid grid-cols-2 gap-x-4 text-sm">
                           <div>
-                            <span className="text-muted-foreground">Time: </span>
-                            {formatTime(new Date(session.start_time))} - {formatTime(new Date(session.end_time))}
+                            <span className="text-muted-foreground">
+                              Time:{" "}
+                            </span>
+                            {formatTime(new Date(session.start_time))} -{" "}
+                            {formatTime(new Date(session.end_time))}
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Speaker: </span>
+                            <span className="text-muted-foreground">
+                              Speaker:{" "}
+                            </span>
                             {session.speaker}
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Location: </span>
+                            <span className="text-muted-foreground">
+                              Location:{" "}
+                            </span>
                             {session.location}
                           </div>
                         </div>

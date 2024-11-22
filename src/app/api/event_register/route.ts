@@ -88,7 +88,6 @@ export async function GET(request: Request) {
       WHERE participant_id = ${user.participant.participant_id} AND event_id = ${event_id}
     `;
     const isRegistered = result[0].count > 0;
-    console.log(`Registration status for participant ${user.participant.participant_id} and event ${event_id}: ${isRegistered}`);
     return NextResponse.json({ registered: isRegistered }, { status: 200 });
   } catch (error) {
     console.error("Check registration error:", error);

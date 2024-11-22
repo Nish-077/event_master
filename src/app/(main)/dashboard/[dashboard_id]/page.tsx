@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { getDashboardById, getEventParticipants, getEventFeedback } from "../action";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +38,7 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
   const metrics = [
     {
       title: "Attendance",
-      value: dashboard.attendance_count,
+      value: dashboard.attended_count,
       icon: Users,
       color: "text-blue-500",
     },
@@ -44,13 +47,7 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
       value: dashboard.average_rating?.toFixed(2) || "N/A",
       icon: Star,
       color: "text-yellow-500",
-    },
-    {
-      title: "Feedback Score",
-      value: Number(dashboard.feedback_score).toFixed(2),
-      icon: BarChart,
-      color: "text-green-500",
-    },
+    }
   ];
 
   return (
@@ -74,7 +71,7 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {metrics.map((metric, index) => (
           <Card key={index}>
             <CardHeader>
@@ -109,13 +106,13 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Registered</span>
-              <span className="font-bold">{dashboard.total_attendees}</span>
+              <span className="font-bold">{dashboard.total_registrants}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Attendance Rate</span>
               <span className="font-bold">
                 {(
-                  (dashboard.attendance_count / dashboard.total_attendees) *
+                  (dashboard.attended_count / dashboard.total_registrants) *
                   100
                 ).toFixed(1)}
                 %
@@ -128,7 +125,12 @@ export default async function DashboardDetailsPage({ params }: PageProps) {
 
         <Card className="col-span-full">
           <CardHeader>
-            <CardTitle>Registered Participants</CardTitle>
+            <CardTitle className="flex justify-between items-center">
+              <span>Registered Participants</span>
+              <span className="text-sm font-normal text-gray-600">
+                Total Registrants: {dashboard.total_registrants}
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>

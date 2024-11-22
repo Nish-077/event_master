@@ -15,11 +15,13 @@ export default async function submitNewEvent(values: any): Promise<{ error: stri
       VALUES (${event_id}, ${title}, ${date}, ${time}, ${budget}, ${description || null})
     `;
 
-    // Insert sessions
+    // Insert sessions and speaker relationships
     for (const session of sessions) {
       const session_id = randomBytes(16).toString("hex").slice(0, 16);
       const formattedStartTime = `${session.startTime}:00`;
       const formattedEndTime = `${session.endTime}:00`;
+      
+      // Insert session
       await prisma.$queryRaw`
         INSERT INTO event_session (
           event_session_id, event_id, topic, building, room_no,
@@ -31,6 +33,18 @@ export default async function submitNewEvent(values: any): Promise<{ error: stri
           ${formattedStartTime}, ${formattedEndTime}
         )
       `;
+
+      // If a speaker was selected for this session, create the relationship
+      if (session.speaker_id) {
+        await prisma.$queryRaw`
+          INSERT INTO speaker_for_session (
+            speaker_id, session_id, event_id
+          )
+          VALUES (
+            ${session.speaker_id}, ${session_id}, ${event_id}
+          )
+        `;
+      }
     }
 
     // Insert agenda items

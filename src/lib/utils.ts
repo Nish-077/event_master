@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import prisma from "./prisma";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,4 +33,17 @@ export function formatRelativeDate(date: Date) {
   }
 
   return eventDate.toLocaleString("en-IN", options);
+}
+
+export async function isSpeakerAssignedToEvent(
+  speakerId: string,
+  eventId: string
+) {
+  const assignments = await prisma.$queryRaw<Array<{ count: number }>>`
+    SELECT COUNT(*) as count
+    FROM speaker_for_session
+    WHERE speaker_id = ${speakerId}
+    AND event_id = ${eventId}
+  `;
+  return assignments[0]?.count > 0;
 }

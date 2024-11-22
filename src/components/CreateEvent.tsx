@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "./ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { newEventSchema, NewEventValues } from "@/lib/validation";
 import { Input } from "./ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Popover } from "./ui/popover";
 import { PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";
@@ -26,12 +26,46 @@ import { format as formatTime } from "date-fns"; // Add this import
 import { Calendar } from "./ui/calendar";
 import submitNewEvent from "@/app/(main)/events/action";
 import { useToast } from "@/hooks/use-toast";
+import { getAllSpeakers } from "@/app/(main)/dashboard/action";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+
+interface Speaker {
+  speaker_id: string;
+  name: string;
+}
 
 export default function CreateEvent() {
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<Date>();
-  const [sessions, setSessions] = useState([{ topic: '', building: '', roomNo: '', startTime: '', endTime: '' }]);
-  const [agendaItems, setAgendaItems] = useState(['']);
+  const [speakers, setSpeakers] = useState<Speaker[]>([]);
+  const [sessions, setSessions] = useState([
+    {
+      topic: "",
+      building: "",
+      roomNo: "",
+      startTime: "",
+      endTime: "",
+      speaker_id: "",
+      speaker: "",
+    },
+  ]);
+  const [agendaItems, setAgendaItems] = useState([""]);
+
+  useEffect(() => {
+    const fetchSpeakers = async () => {
+      const result = await getAllSpeakers();
+      if (result.data) {
+        setSpeakers(result.data);
+      }
+    };
+    fetchSpeakers();
+  }, []);
 
   const { toast } = useToast();
 
@@ -60,7 +94,18 @@ export default function CreateEvent() {
   };
 
   const addSession = () => {
-    setSessions([...sessions, { topic: '', building: '', roomNo: '', startTime: '', endTime: '' }]);
+    setSessions([
+      ...sessions,
+      {
+        topic: "",
+        building: "",
+        roomNo: "",
+        startTime: "",
+        endTime: "",
+        speaker_id: "",
+        speaker: "",
+      },
+    ]);
   };
 
   const removeSession = (index: number) => {
@@ -70,7 +115,7 @@ export default function CreateEvent() {
   };
 
   const addAgendaItem = () => {
-    setAgendaItems([...agendaItems, '']);
+    setAgendaItems([...agendaItems, ""]);
   };
 
   const removeAgendaItem = (index: number) => {
@@ -115,7 +160,9 @@ export default function CreateEvent() {
       <DrawerTrigger asChild>
         <div className="flex gap-2 fixed bottom-10 right-10 h-fit w-fit p-4 bg-black rounded-2xl">
           <PlusIcon size={30} color="white" strokeWidth={2} />
-          <button className="text-white text-lg font-semibold">Create Event</button>
+          <button className="text-white text-lg font-semibold">
+            Create Event
+          </button>
         </div>
       </DrawerTrigger>
       <DrawerContent>
@@ -227,7 +274,10 @@ export default function CreateEvent() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter event description" {...field} />
+                        <Input
+                          placeholder="Enter event description"
+                          {...field}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -238,14 +288,24 @@ export default function CreateEvent() {
               <div className="space-y-2 border-b pb-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold">Sessions</h3>
-                  <Button type="button" onClick={addSession} variant="outline" size="sm">
+                  <Button
+                    type="button"
+                    onClick={addSession}
+                    variant="outline"
+                    size="sm"
+                  >
                     <PlusIcon className="w-4 h-4" /> Add Session
                   </Button>
                 </div>
                 {sessions.map((session, index) => (
                   <div key={index} className="space-y-2 p-4 border rounded">
                     <div className="flex justify-end">
-                      <Button type="button" onClick={() => removeSession(index)} variant="ghost" size="sm">
+                      <Button
+                        type="button"
+                        onClick={() => removeSession(index)}
+                        variant="ghost"
+                        size="sm"
+                      >
                         <MinusIcon className="w-4 h-4" />
                       </Button>
                     </div>
@@ -256,11 +316,16 @@ export default function CreateEvent() {
                         <FormItem>
                           <FormLabel>Topic</FormLabel>
                           <FormControl>
-                            <Input {...field} value={session.topic} placeholder="Enter topic to be discussed in the session" onChange={e => {
-                              const newSessions = [...sessions];
-                              newSessions[index].topic = e.target.value;
-                              setSessions(newSessions);
-                            }} />
+                            <Input
+                              {...field}
+                              value={session.topic}
+                              placeholder="Enter topic to be discussed in the session"
+                              onChange={(e) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].topic = e.target.value;
+                                setSessions(newSessions);
+                              }}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -272,11 +337,16 @@ export default function CreateEvent() {
                         <FormItem>
                           <FormLabel>Building</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter building" {...field} value={session.building} onChange={e => {
-                              const newSessions = [...sessions];
-                              newSessions[index].building = e.target.value;
-                              setSessions(newSessions);
-                            }} />
+                            <Input
+                              placeholder="Enter building"
+                              {...field}
+                              value={session.building}
+                              onChange={(e) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].building = e.target.value;
+                                setSessions(newSessions);
+                              }}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -288,11 +358,16 @@ export default function CreateEvent() {
                         <FormItem>
                           <FormLabel>Room Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter room number" {...field} value={session.roomNo} onChange={e => {
-                              const newSessions = [...sessions];
-                              newSessions[index].roomNo = e.target.value;
-                              setSessions(newSessions);
-                            }} />
+                            <Input
+                              placeholder="Enter room number"
+                              {...field}
+                              value={session.roomNo}
+                              onChange={(e) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].roomNo = e.target.value;
+                                setSessions(newSessions);
+                              }}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -304,11 +379,16 @@ export default function CreateEvent() {
                         <FormItem>
                           <FormLabel>Start Time</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} value={session.startTime} onChange={e => {
-                              const newSessions = [...sessions];
-                              newSessions[index].startTime = e.target.value;
-                              setSessions(newSessions);
-                            }} />
+                            <Input
+                              type="time"
+                              {...field}
+                              value={session.startTime}
+                              onChange={(e) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].startTime = e.target.value;
+                                setSessions(newSessions);
+                              }}
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -320,11 +400,52 @@ export default function CreateEvent() {
                         <FormItem>
                           <FormLabel>End Time</FormLabel>
                           <FormControl>
-                            <Input type="time" {...field} value={session.endTime} onChange={e => {
-                              const newSessions = [...sessions];
-                              newSessions[index].endTime = e.target.value;
-                              setSessions(newSessions);
-                            }} />
+                            <Input
+                              type="time"
+                              {...field}
+                              value={session.endTime}
+                              onChange={(e) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].endTime = e.target.value;
+                                setSessions(newSessions);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`sessions.${index}.speaker_id`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Speaker</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={session.speaker_id}
+                              onValueChange={(value) => {
+                                const newSessions = [...sessions];
+                                newSessions[index].speaker_id = value;
+                                newSessions[index].speaker =
+                                  speakers.find((s) => s.speaker_id === value)
+                                    ?.name || "";
+                                setSessions(newSessions);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Speaker" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {speakers.map((speaker) => (
+                                  <SelectItem
+                                    key={speaker.speaker_id}
+                                    value={speaker.speaker_id}
+                                  >
+                                    {speaker.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </FormControl>
                         </FormItem>
                       )}
@@ -337,7 +458,12 @@ export default function CreateEvent() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold">Agenda</h3>
-                  <Button type="button" onClick={addAgendaItem} variant="outline" size="sm">
+                  <Button
+                    type="button"
+                    onClick={addAgendaItem}
+                    variant="outline"
+                    size="sm"
+                  >
                     <PlusIcon className="w-4 h-4" /> Add Item
                   </Button>
                 </div>
@@ -345,14 +471,19 @@ export default function CreateEvent() {
                   <div key={index} className="flex gap-2">
                     <Input
                       value={item}
-                      onChange={e => {
+                      onChange={(e) => {
                         const newItems = [...agendaItems];
                         newItems[index] = e.target.value;
                         setAgendaItems(newItems);
                       }}
                       placeholder="Enter agenda item"
                     />
-                    <Button type="button" onClick={() => removeAgendaItem(index)} variant="ghost" size="sm">
+                    <Button
+                      type="button"
+                      onClick={() => removeAgendaItem(index)}
+                      variant="ghost"
+                      size="sm"
+                    >
                       <MinusIcon className="w-4 h-4" />
                     </Button>
                   </div>
